@@ -1,0 +1,27 @@
+FROM linuxkit/kernel:4.19.99 AS ksrc
+
+# Extract headers and compile module
+#FROM linuxkit/alpine:3fdc49366257e53276c6f363956a4353f95d9a81 AS build
+FROM alpine:edge AS build
+#RUN echo http://dl-3.alpinelinux.org/alpine/edge/main > /etc/apk/repositories && \
+#      apk upgrade --update-cache --available
+RUN apk add build-base elfutils-dev git curl python flex bison boost-dev userspace-rcu-dev
+COPY --from=ksrc /kernel-dev.tar /
+RUN tar xf kernel-dev.tar
+RUN curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py && \
+      python get-pip.py && \
+      pip install scons && \
+      mkdir /vrouter && \
+      curl https://storage.googleapis.com/git-repo-downloads/repo > /vrouter/repo && \
+      chmod +x /vrouter/repo && \
+      cd /vrouter && \
+      ./repo init --no-clone-bundle -q -u https://github.com/Juniper/contrail-vnc
+COPY manifest.xml /vrouter/.repo/manifest.xml
+RUN cd /vrouter && ./repo sync
+#RUN cd /vrouter && scons --kernel-dir=/usr/src/linux-headers-4.19.99-linuxkit --without-dpdk
+#FROM alpine:3.9
+#COPY --from=build /vrouter/contrail-vrouter/vrouter.ko /tmp
+#COPY check.sh /check.sh
+#COPY vif /usr/bin/vif
+#RUN chmod +x /usr/bin/vif
+#ENTRYPOINT ["/bin/sh", "/check.sh"]
